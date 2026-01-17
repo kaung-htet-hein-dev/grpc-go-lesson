@@ -5,6 +5,9 @@ import (
 	"product-service/internal/domain"
 	"product-service/internal/usecase"
 	productpb "product-service/proto"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type ProductHandler struct {
@@ -19,9 +22,13 @@ func NewProductHandler(u usecase.ProductUsecase) *ProductHandler {
 func (h *ProductHandler) GetProduct(ctx context.Context, req *productpb.GetProductRequest) (
 	*productpb.GetProductResponse,
 	error) {
+	if req.Id <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "invalid product ID")
+	}
+
 	product, err := h.usecase.GetProduct(req.Id)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.NotFound, "product not found")
 	}
 
 	return &productpb.GetProductResponse{
@@ -38,6 +45,20 @@ func (h *ProductHandler) GetProduct(ctx context.Context, req *productpb.GetProdu
 func (h *ProductHandler) CreateProduct(ctx context.Context, req *productpb.CreateProductRequest) (
 	*productpb.CreateProductResponse,
 	error) {
+	if req.Price <= 0 {
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"price must be greater than zero",
+		)
+	}
+
+	if req.Stock < 0 {
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"stock cannot be negative",
+		)
+	}
+
 	product := &domain.Product{
 		Name:        req.Name,
 		Description: req.Description,
@@ -47,7 +68,10 @@ func (h *ProductHandler) CreateProduct(ctx context.Context, req *productpb.Creat
 
 	createdProduct, err := h.usecase.CreateProduct(product)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(
+			codes.Internal,
+			"failed to create product",
+		)
 	}
 
 	return &productpb.CreateProductResponse{

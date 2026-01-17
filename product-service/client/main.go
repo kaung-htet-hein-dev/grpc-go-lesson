@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 func main() {
@@ -24,9 +25,14 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	res, err := client.GetProduct(ctx, &productpb.GetProductRequest{Id: 1})
+	res, err := client.GetProduct(ctx, &productpb.GetProductRequest{Id: 0})
 	if err != nil {
-		log.Fatalf("GetProduct failed: %v", err)
+		st, ok := status.FromError(err)
+		if ok {
+			log.Fatalf("gRPC error: %v, message: %v", st.Code(), st.Message())
+		} else {
+			log.Fatalf("unknown error: %v", err)
+		}
 	}
 
 	log.Printf("Got product: %+v", res.GetProduct())
